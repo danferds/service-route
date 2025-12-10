@@ -122,3 +122,39 @@ LEFT JOIN alertas a
     ON a.instancia_rota_id = ri.id 
    AND a.id_waypoint = wp.id 
    AND a.tipo = 'delay';
+
+CREATE TABLE route_plans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_rota UUID REFERENCES rotas(id),
+    instancia_rota_id UUID REFERENCES instancias_rota(id),
+    status TEXT CHECK (status IN ('pending','running','done','failed','applied')) DEFAULT 'pending',
+    solver TEXT,
+    objective TEXT,
+    params JSONB,
+    total_distance_m REAL,
+    total_time_seconds INT,
+    plan_json JSONB,
+    error_message TEXT,
+    criado_em TIMESTAMPTZ DEFAULT now(),
+    atualizado_em TIMESTAMPTZ DEFAULT now(),
+    applied_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_route_plans_instancia ON route_plans(instancia_rota_id);
+CREATE INDEX idx_route_plans_rota ON route_plans(id_rota);
+
+CREATE TABLE plan_waypoints (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    route_plan_id UUID REFERENCES route_plans(id) ON DELETE CASCADE,
+    seq INTEGER,
+    ref TEXT,
+    type TEXT CHECK (type IN ('existing','inline')) NOT NULL,
+    nome TEXT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    eta TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_plan_waypoints_plan ON plan_waypoints(route_plan_id);
+CREATE INDEX idx_plan_waypoints_plan_seq ON plan_waypoints(route_plan_id, seq);
