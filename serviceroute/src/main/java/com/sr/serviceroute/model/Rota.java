@@ -6,6 +6,9 @@ import lombok.*;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.sr.serviceroute.model.enums.RotaStatus;
 
 @Entity
@@ -34,7 +37,8 @@ public class Rota {
   private Instant dataAtualizacao;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(name = "status", columnDefinition = "rota_status", nullable = false)
   private RotaStatus status;
 
   @Column(name = "tempo_estimado_total")

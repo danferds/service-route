@@ -6,6 +6,9 @@ import lombok.*;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.sr.serviceroute.model.enums.RotaWaypointTipo;
 
 @Entity
@@ -31,7 +34,8 @@ public class RotaWaypoint {
   private Waypoint waypoint;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(name = "tipo", columnDefinition = "rota_waypoint_tipo", nullable = false)
   private RotaWaypointTipo tipo;
 
   private Integer seq;

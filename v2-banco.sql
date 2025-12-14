@@ -8,7 +8,9 @@ CREATE TYPE rota_status AS ENUM (
 CREATE TYPE rota_waypoint_tipo AS ENUM (
     'PICKUP',
     'DELIVERY',
-    'PARADA'
+    'PARADA',
+    'ORIGEM',
+    'DESTINO'
 );
 
 CREATE TYPE alerta_tipo AS ENUM (

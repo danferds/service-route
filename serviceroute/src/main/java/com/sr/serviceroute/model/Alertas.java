@@ -6,6 +6,9 @@ import lombok.*;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.sr.serviceroute.model.enums.AlertaTipo;
 
 @Entity
@@ -28,7 +31,8 @@ public class Alertas {
   private String texto;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(name = "tipo", columnDefinition = "alerta_tipo", nullable = false)
   private AlertaTipo tipo;
 
   @Column(name = "data_criacao", nullable = false)
