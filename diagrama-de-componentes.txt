@@ -1,0 +1,67 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "Usuário", "Usuário do sistema (web/mobile)")
+
+System_Boundary(sr_sys, "Service-Route System") {
+  Container(api, "Service Route API", "REST", "API principal — gerencia rotas, viagens, visitas e alertas")
+  ContainerDb(db, "Postgres", "Relacional", "Armazena Rotas, Waypoints, RotaWaypoint, Viagens, Visitas e Alertas")
+  Container(mq, "Message Broker", "RabbitMQ/Kafka", "Fila para tarefas assíncronas e retry")
+  Container(workers, "Background Workers", "Node/Java/Python", "Workers de planejamento, retry e análise de visitas")
+  Container_Ext(google, "Google Directions API", "External API", "Serviço externo para cálculo de rotas")
+  Container_Ext(veiculoSvc, "Vehicle Service", "External Service", "Referência de veículo externa")
+}
+
+Container_Boundary(api_boundary, "Service Route API") {
+  Component(api_rest, "REST API", "HTTP/JSON", "Expor endpoints: /rotas, /viagens, /visitas, /alertas")
+  Component(route_mgmt, "Route Management", "Domain Service", "CRUD de rotas; inicia planejamento")
+  Component(trip_svc, "Trip Service (Viagem)", "Domain Service", "Gerencia instâncias de viagem e associação a rota")
+  Component(visit_svc, "Visit Service (Visitas)", "Domain Service", "Registra visitas realizadas durante viagem")
+  Component(alert_svc, "Alert Service", "Domain Service", "Cria/consulta alertas; provê API para worker")
+  Component(repos, "Repository Layer", "DB Access", "Acesso às tabelas: Cliente, Rota, Waypoint, RotaWaypoint, Viagem, Visita, Alertas")
+  Component(planner_orch, "Planner Orchestrator", "Coordinator", "Orquestra pedido de planejamento; publica tarefa na fila; atualiza status da rota")
+  Component(retry_ctrl, "Retry Controller", "Component", "Regra/limite de tentativas; marca rota ERRO após falhas")
+}
+
+Container_Boundary(workers_boundary, "Workers") {
+  Component(planner_worker, "Planner Worker", "Worker", "Consome tarefa de planejamento; chama Google; atualiza Waypoints/Rota; publica resultado")
+  Component(retry_worker, "Retry Worker", "Worker", "Consome mensagens de retry e re-submete tarefas ao planner")
+  Component(alert_worker, "Alert Worker", "Worker", "Periodicamente analisa visitas/etas e insere Alertas quando necessário")
+}
+
+' Relationships
+Rel(user, api_rest, "Usa")
+Rel(api_rest, route_mgmt, "Chama")
+Rel(api_rest, trip_svc, "Chama")
+Rel(api_rest, visit_svc, "Chama")
+Rel(api_rest, alert_svc, "Chama")
+Rel(route_mgmt, repos, "Lê/Grava rotas e metadados")
+Rel(trip_svc, repos, "Lê/Grava viagens")
+Rel(visit_svc, repos, "Lê/Grava visitas")
+Rel(alert_svc, repos, "Lê/Grava alertas")
+
+Rel(route_mgmt, planner_orch, "Solicita planejamento")
+Rel(planner_orch, mq, "Publica tarefa de planejamento")
+Rel(mq, planner_worker, "Entrega tarefa de planejamento")
+Rel(planner_worker, google, "Chama (Directions API) para calcular rota")
+Rel(planner_worker, repos, "Atualiza Waypoints, RotaWaypoint (seq, eta) e Rota status")
+Rel(planner_worker, mq, "Em caso de falha publica mensagem de retry")
+Rel(mq, retry_worker, "Entrega mensagens de retry")
+Rel(retry_worker, planner_orch, "Re-submete tarefa para planner_orch")
+Rel(retry_worker, retry_ctrl, "Aplica política de tentativas / marca ERRO quando esgota")
+
+Rel(alert_worker, repos, "Consulta visitas e etas")
+Rel(alert_worker, alert_svc, "Cria alertas via Alert Service")
+Rel(alert_svc, repos, "Persiste alertas")
+
+Rel(api_rest, veiculoSvc, "Consulta/valida referência de veículo")
+Rel(api_rest, db, "Operações transacionais (via Repository Layer)")
+Rel(mq, db, "Opcional: persiste tarefas/estado de retry (opcional)")
+
+AddElementTag("REST API", $bgColor="#EEF")
+AddElementTag("Worker", $bgColor="#EFE")
+AddElementTag("Domain Service", $bgColor="#FFE")
+
+@enduml
