@@ -35,4 +35,10 @@ public class RotaController {
         .status(HttpStatus.CREATED)
         .body(new CriarRotaResponseDTO(rotaId));
   }
+
+  @PostMapping("/{id}/planejar")
+  public ResponseEntity<Void> planejar(@PathVariable UUID id) {
+    rotaService.planejarRota(id);
+    return ResponseEntity.accepted().build();
+  }
 }

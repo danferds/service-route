@@ -13,7 +13,7 @@
 	- id
     - idRota
     - idWaypoint
-    - tipo (PICKUP, DELIVERY, PARADA)
+    - tipo (PICKUP, DELIVERY, PARADA, ORIGEM, DESTINO) // origem e detino serão marcadas com seus respectivos valores no ENUM
     - seq (opcional, inicialmente só serão preenchidos origem e destino 1 e N (total de pontos), o restante será preenchido depois do cálculo do Google)
     - etaPrevisto (opcional - preenchido depois pelo google)
 - Waypoint

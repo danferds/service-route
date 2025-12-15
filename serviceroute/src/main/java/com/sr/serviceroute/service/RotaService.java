@@ -8,6 +8,8 @@ import com.sr.serviceroute.model.enums.RotaStatus;
 import com.sr.serviceroute.model.enums.RotaWaypointTipo;
 import com.sr.serviceroute.repository.ClienteRepository;
 import com.sr.serviceroute.repository.RotaRepository;
+import com.sr.serviceroute.service.planning.RotaPlanningService;
+
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -21,15 +23,18 @@ public class RotaService {
   private final ClienteRepository clienteRepository;
   private final WaypointService waypointService;
   private final RotaWaypointService rotaWaypointService;
+  private final RotaPlanningService rotaPlanningService;
 
   public RotaService(RotaRepository rotaRepository,
       ClienteRepository clienteRepository,
       WaypointService waypointService,
-      RotaWaypointService rotaWaypointService) {
+      RotaWaypointService rotaWaypointService,
+      RotaPlanningService rotaPlanningService) {
     this.rotaRepository = rotaRepository;
     this.clienteRepository = clienteRepository;
     this.waypointService = waypointService;
     this.rotaWaypointService = rotaWaypointService;
+    this.rotaPlanningService = rotaPlanningService;
   }
 
   @Transactional
@@ -77,5 +82,30 @@ public class RotaService {
         sequencia);
 
     return rota.getId();
+  }
+
+  @Transactional
+  public void planejarRota(UUID rotaId) {
+
+    Rota rota = rotaRepository.findById(rotaId)
+        .orElseThrow(() -> new IllegalArgumentException("Rota não encontrada"));
+
+    if (rota.getStatus() != RotaStatus.CRIADA) {
+      throw new IllegalStateException(
+          "Rota não pode ser planejada no estado atual");
+    }
+
+    try {
+      rota.setStatus(RotaStatus.PLANEJANDO);
+
+      rotaPlanningService.planejar(rotaId);
+
+      rota.setStatus(RotaStatus.PLANEJADA);
+
+    } catch (Exception ex) {
+      rota.setStatus(RotaStatus.ERRO);
+      // futuramente: persistir mensagem de erro
+      throw ex;
+    }
   }
 }
