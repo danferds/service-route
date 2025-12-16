@@ -1,0 +1,45 @@
+- Cliente
+     - id
+     - nome
+- Rota (Tabela com as rotas, o usuário vai cadastrar inicialmente os dados base (nome, origem, destino, pontos intermediários de parada) e depois será feito o feito planejamento da rota utilizando a api do google, aí serão preenchidos os dados que dependem dela. A origem vai estar nos waypoints com o valor inicial 1 (vai se manter assim), o destino inicialmente vai estar com o valor N (quantidade total de pontos), os pontos intermediários vão iniciar como vazios e depois do calculo da rota pelo google vão receber seus respectivos valores)
+    - id
+    - idCliente
+    - nome
+    - dataCriacao
+    - dataAtualizacao
+    - status (CRIADA, PLANEJANDO, PLANEJADA, ERRO) default CRIADA, quando a rota é criada ela recebe o valor CRIADA, quando está ocorrendo o planejamento dela ela recebe o status de PLANEJANDO, quando ocorre um erro recebe o status de ERRO e quando o planejamento é finalizado ela recebe o status de FINALIZADA 
+    - tempoEstimadoTotal
+- RotaWaypoint
+	- id
+    - idRota
+    - idWaypoint
+    - tipo (PICKUP, DELIVERY, PARADA, ORIGEM, DESTINO) // origem e detino serão marcadas com seus respectivos valores no ENUM
+    - seq (opcional, inicialmente só serão preenchidos origem e destino 1 e N (total de pontos), o restante será preenchido depois do cálculo do Google)
+    - etaPrevisto (opcional - preenchido depois pelo google)
+- Waypoint
+    - id
+    - longitude
+    - latitude
+    - endereco (opcional - preenchido depois pelo google)
+    
+- Viagem (instancia final do planejamento da rota, uma rota pode estar em várias viagens)
+    - id
+    - idRota
+    - veiculoRef (entidade externa ao servico)
+    - tempoRealTotal
+    - dataInicio
+    - dataFim
+- Visitas (visitas realizadas nos waypoints, vamos identificar pela sequencia (seq), quando iniciar uma viagem o cara )
+    - id
+    - idViagem
+    - idRotaWaypoint
+    - etaReal
+    - dataCriacao
+    
+ - Alertas (tabela que o worker que verifica atrasos vai trabalhar, vai inserir alertas conforme atrasos, o worker vai rodar a cada determinado tempo)
+ 	- id
+ 	- idVisita
+ 	- texto
+ 	- tipo (ATRASO, INFO, ERRO)
+ 	- dataCriacao
+ 	
