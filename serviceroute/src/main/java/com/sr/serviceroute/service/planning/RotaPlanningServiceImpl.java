@@ -36,23 +36,35 @@ public class RotaPlanningServiceImpl implements RotaPlanningService {
     // 3. Montar request para API externa (via mapper)
     var googleRequest = googleRoutesMapper.toGoogleRequest(rota, waypoints);
 
-    log.debug("Google Routes request: {}", googleRequest);
+    log.error("Google Routes request: {}", googleRequest);
 
     try {
       // 4. Chamar API externa
       var googleResponse = googleRoutesClient.calcularRota(googleRequest);
 
+      log.error("Google Routes response: {}", googleResponse);
+
       // 5. Interpretar resposta
       var resultadoPlanejamento = googleRoutesMapper.fromGoogleResponse(googleResponse);
 
       // 6. Atualizar waypoints (ordem e ETA)
-      resultadoPlanejamento.getWaypoints().forEach(resultado -> {
-        RotaWaypoint waypoint = resultado.getWaypoint();
+      for (var resultado : resultadoPlanejamento.getWaypoints()) {
+        log.debug("resultado: {}", resultado);
+        Integer seq = resultado.getSeq();
+        if (seq == null || seq < 0 || seq >= waypoints.size()) {
+          log.warn("Seq inválido no resultado do planejamento: {}", seq);
+          continue;
+        }
+        RotaWaypoint waypoint = waypoints.get(seq);
+        if (waypoint == null) {
+          log.warn("Waypoint não encontrado para seq={}", seq);
+          continue;
+        }
         waypoint.setSeq(resultado.getSeq());
         waypoint.setEtaPrevisto(resultado.getEtaPrevisto());
-      });
+      }
 
-      // 7. Atualizar rota
+      // // 7. Atualizar rota
       var duracao = resultadoPlanejamento.getTempoTotal();
       rota.setTempoEstimadoTotal(
           duracao == null ? null : Math.toIntExact(duracao.getSeconds()));

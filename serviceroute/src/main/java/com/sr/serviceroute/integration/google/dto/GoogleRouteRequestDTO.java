@@ -14,7 +14,6 @@ public class GoogleRouteRequestDTO {
   private boolean optimizeWaypointOrder;
 
   private String units;
-  // private String[] fields;
 
   @Data
   public static class Waypoint {

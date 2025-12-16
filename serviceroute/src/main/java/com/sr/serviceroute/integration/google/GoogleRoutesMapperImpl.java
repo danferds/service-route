@@ -4,6 +4,7 @@ import com.sr.serviceroute.integration.google.dto.GoogleRouteRequestDTO;
 import com.sr.serviceroute.integration.google.dto.GoogleRouteResponseDTO;
 import com.sr.serviceroute.model.Rota;
 import com.sr.serviceroute.model.RotaWaypoint;
+import com.sr.serviceroute.model.enums.RotaWaypointTipo;
 import com.sr.serviceroute.service.planning.model.ResultadoPlanejamento;
 import com.sr.serviceroute.service.planning.model.ResultadoWaypoint;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class GoogleRoutesMapperImpl implements GoogleRoutesMapper {
@@ -24,25 +26,26 @@ public class GoogleRoutesMapperImpl implements GoogleRoutesMapper {
     request.setTravelMode("DRIVE");
     request.setOptimizeWaypointOrder(true);
 
-    request.setOrigin(toWaypoint(waypoints.get(0)));
-    request.setDestination(toWaypoint(waypoints.get(waypoints.size() - 1)));
+    Optional<RotaWaypoint> origin = waypoints.stream().filter(w -> w.getTipo() == RotaWaypointTipo.ORIGEM).findFirst();
+    Optional<RotaWaypoint> destination = waypoints.stream().filter(w -> w.getTipo() == RotaWaypointTipo.DESTINO)
+        .findFirst();
+
+    if (!origin.isPresent() || !destination.isPresent()) {
+      throw new IllegalArgumentException("Rota deve ter uma origem e um destino");
+    }
+
+    request.setOrigin(toWaypoint(origin.get()));
+    request.setDestination(toWaypoint(destination.get()));
 
     request.setIntermediates(
-        waypoints.subList(1, waypoints.size() - 1)
+        waypoints
             .stream()
+            .filter(w -> w.getTipo() != RotaWaypointTipo.ORIGEM && w.getTipo() != RotaWaypointTipo.DESTINO)
             .map(this::toWaypoint)
             .toList());
 
-    request.setOptimizeWaypointOrder(false);
+    request.setOptimizeWaypointOrder(true);
     request.setUnits("METRIC");
-
-    // String[] fields = new String[] {
-    // "routes.legs.durationMillis",
-    // "routes.durationMillis",
-    // "routes.optimizedIntermediateWaypointIndices",
-    // "routes.distanceMeters" };
-
-    // request.setFields(fields);
 
     return request;
   }
@@ -68,7 +71,7 @@ public class GoogleRoutesMapperImpl implements GoogleRoutesMapper {
 
     ResultadoPlanejamento resultado = new ResultadoPlanejamento();
     resultado.setTempoTotal(
-        Duration.ofMillis(route.getDurationMillis()));
+        Duration.ofSeconds(convertDurationStringToLong(route.getDuration())));
 
     List<ResultadoWaypoint> resultados = new ArrayList<>();
 
@@ -76,18 +79,34 @@ public class GoogleRoutesMapperImpl implements GoogleRoutesMapper {
     int seq = 0;
 
     // Origem
-    acumulado = acumulado.plusMillis(route.getLegs().get(0).getDurationMillis());
+    acumulado = acumulado.plusSeconds(convertDurationStringToLong(route.getLegs().get(0).getDuration()));
     resultados.add(buildResultado(seq++, acumulado));
 
     // Intermediários (ordem otimizada)
     for (int i = 1; i < route.getLegs().size(); i++) {
-      acumulado = acumulado.plusMillis(
-          route.getLegs().get(i).getDurationMillis());
+      acumulado = acumulado.plusSeconds(convertDurationStringToLong(route.getLegs().get(i).getDuration()));
       resultados.add(buildResultado(seq++, acumulado));
     }
 
     resultado.setWaypoints(resultados);
     return resultado;
+  }
+
+  private long convertDurationStringToLong(String durationString) {
+    // Verifica se a string termina com 's' e a remove.
+    if (durationString != null && durationString.endsWith("s")) {
+      String numericString = durationString.substring(0, durationString.length() - 1);
+
+      try {
+        // Usa Long.parseLong() para converter a parte numérica para long.
+        return Long.parseLong(numericString);
+      } catch (NumberFormatException e) {
+        // Captura exceções se a parte numérica não for um long válido.
+        throw new NumberFormatException("A parte numérica da string '" + durationString + "' é inválida.");
+      }
+    } else {
+      throw new NumberFormatException("A string de duração não está no formato esperado (ex: '200s').");
+    }
   }
 
   private ResultadoWaypoint buildResultado(int seq, Instant eta) {
