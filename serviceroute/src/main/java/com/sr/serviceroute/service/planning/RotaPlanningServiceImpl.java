@@ -48,20 +48,49 @@ public class RotaPlanningServiceImpl implements RotaPlanningService {
       var resultadoPlanejamento = googleRoutesMapper.fromGoogleResponse(googleResponse);
 
       // 6. Atualizar waypoints (ordem e ETA)
-      for (var resultado : resultadoPlanejamento.getWaypoints()) {
-        log.debug("resultado: {}", resultado);
-        Integer seq = resultado.getSeq();
-        if (seq == null || seq < 0 || seq >= waypoints.size()) {
-          log.warn("Seq inválido no resultado do planejamento: {}", seq);
-          continue;
+      // Reconstrói a lista lógica de waypoints na ordem enviada ao Google (Origem ->
+      // Intermediários -> Destino)
+      List<RotaWaypoint> orderedWaypoints = new java.util.ArrayList<>();
+
+      RotaWaypoint origin = waypoints.stream()
+          .filter(w -> w.getTipo() == com.sr.serviceroute.model.enums.RotaWaypointTipo.ORIGEM)
+          .findFirst()
+          .orElse(null);
+      if (origin != null)
+        orderedWaypoints.add(origin);
+
+      waypoints.stream()
+          .filter(w -> w.getTipo() != com.sr.serviceroute.model.enums.RotaWaypointTipo.ORIGEM
+              && w.getTipo() != com.sr.serviceroute.model.enums.RotaWaypointTipo.DESTINO)
+          .forEach(orderedWaypoints::add);
+
+      RotaWaypoint dest = waypoints.stream()
+          .filter(w -> w.getTipo() == com.sr.serviceroute.model.enums.RotaWaypointTipo.DESTINO)
+          .findFirst()
+          .orElse(null);
+      if (dest != null)
+        orderedWaypoints.add(dest);
+
+      List<com.sr.serviceroute.service.planning.model.ResultadoWaypoint> results = resultadoPlanejamento.getWaypoints();
+
+      if (orderedWaypoints.size() != results.size()) {
+        log.warn("Mismatch entre quantidade de waypoints ({}) e resultados ({})",
+            orderedWaypoints.size(), results.size());
+      }
+
+      log.info("Waypoints Ordenados para match:");
+      for (int k = 0; k < orderedWaypoints.size(); k++) {
+        log.info("  [{}] Type: {}, ID: {}", k, orderedWaypoints.get(k).getTipo(), orderedWaypoints.get(k).getId());
+      }
+
+      for (int i = 0; i < Math.min(orderedWaypoints.size(), results.size()); i++) {
+        RotaWaypoint wp = orderedWaypoints.get(i);
+        var res = results.get(i);
+        if (res != null) {
+          log.info("Aplicando Resultado [Index {}] (Seq {}) no Waypoint ID {}", i, res.getSeq(), wp.getId());
+          wp.setSeq(res.getSeq());
+          wp.setEtaPrevisto(res.getEtaPrevisto());
         }
-        RotaWaypoint waypoint = waypoints.get(seq);
-        if (waypoint == null) {
-          log.warn("Waypoint não encontrado para seq={}", seq);
-          continue;
-        }
-        waypoint.setSeq(resultado.getSeq());
-        waypoint.setEtaPrevisto(resultado.getEtaPrevisto());
       }
 
       // // 7. Atualizar rota

@@ -7,6 +7,9 @@ import com.sr.serviceroute.model.RotaWaypoint;
 import com.sr.serviceroute.model.enums.RotaWaypointTipo;
 import com.sr.serviceroute.service.planning.model.ResultadoPlanejamento;
 import com.sr.serviceroute.service.planning.model.ResultadoWaypoint;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -15,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Component
 public class GoogleRoutesMapperImpl implements GoogleRoutesMapper {
 
@@ -43,6 +47,7 @@ public class GoogleRoutesMapperImpl implements GoogleRoutesMapper {
             .filter(w -> w.getTipo() != RotaWaypointTipo.ORIGEM && w.getTipo() != RotaWaypointTipo.DESTINO)
             .map(this::toWaypoint)
             .toList());
+    log.error("Intermediarios: {}", request.getIntermediates());
 
     request.setOptimizeWaypointOrder(true);
     request.setUnits("METRIC");
@@ -73,22 +78,83 @@ public class GoogleRoutesMapperImpl implements GoogleRoutesMapper {
     resultado.setTempoTotal(
         Duration.ofSeconds(convertDurationStringToLong(route.getDuration())));
 
-    List<ResultadoWaypoint> resultados = new ArrayList<>();
-
     Instant acumulado = Instant.now();
     int seq = 0;
 
-    // Origem
-    acumulado = acumulado.plusSeconds(convertDurationStringToLong(route.getLegs().get(0).getDuration()));
-    resultados.add(buildResultado(seq++, acumulado));
+    // 1. Origem
+    ResultadoWaypoint originResult = buildResultado(seq++, acumulado);
 
-    // Intermediários (ordem otimizada)
-    for (int i = 1; i < route.getLegs().size(); i++) {
-      acumulado = acumulado.plusSeconds(convertDurationStringToLong(route.getLegs().get(i).getDuration()));
-      resultados.add(buildResultado(seq++, acumulado));
+    // 2. Intermediários e Destino
+    int numIntermediates = route.getLegs().size() - 1;
+    List<ResultadoWaypoint> intermediateResults = new ArrayList<>(
+        java.util.Collections.nCopies(numIntermediates, null));
+    List<ResultadoWaypoint> unmappedIntermediates = new ArrayList<>();
+    ResultadoWaypoint destResult = null;
+
+    List<Integer> optimizedIndices = route.getOptimizedIntermediateWaypointIndex();
+    if (optimizedIndices == null) {
+      optimizedIndices = new ArrayList<>();
+      for (int i = 0; i < numIntermediates; i++) {
+        optimizedIndices.add(i);
+      }
     }
 
-    resultado.setWaypoints(resultados);
+    for (int i = 0; i < route.getLegs().size(); i++) {
+      GoogleRouteResponseDTO.Leg leg = route.getLegs().get(i);
+      acumulado = acumulado.plusSeconds(convertDurationStringToLong(leg.getDuration()));
+      ResultadoWaypoint currentResult = buildResultado(seq++, acumulado);
+
+      if (i < numIntermediates) {
+        // É um ponto intermediário
+        boolean mapped = false;
+        if (i < optimizedIndices.size()) {
+          int originalIndex = optimizedIndices.get(i);
+          if (originalIndex >= 0 && originalIndex < intermediateResults.size()) {
+            intermediateResults.set(originalIndex, currentResult);
+            mapped = true;
+            log.info("Mapping Leg {} (Seq {}) to Original Intermediate Index {}", i, currentResult.getSeq(),
+                originalIndex);
+          } else {
+            log.warn("Invalid optimized index {} for Leg {}. Will use fallback.", originalIndex, i);
+          }
+        }
+
+        if (!mapped) {
+          unmappedIntermediates.add(currentResult);
+        }
+      } else {
+        log.info("Leg {} é Destinado (Seq {})", i, currentResult.getSeq());
+        destResult = currentResult;
+      }
+    }
+
+    // Fallback: Preencher buracos com os não mapeados
+    int unmappedIndex = 0;
+    for (int i = 0; i < intermediateResults.size(); i++) {
+      if (intermediateResults.get(i) == null) {
+        if (unmappedIndex < unmappedIntermediates.size()) {
+          intermediateResults.set(i, unmappedIntermediates.get(unmappedIndex++));
+          log.info("Fallback: Slot {} com Resultado nao mapeado (Seq {})",
+              i, intermediateResults.get(i).getSeq());
+        } else {
+          log.error("Critico: Falta resultado para o slot intermediario {}!", i);
+        }
+      }
+    }
+
+    List<ResultadoWaypoint> finalResults = new ArrayList<>();
+    finalResults.add(originResult);
+    finalResults.addAll(intermediateResults);
+    if (destResult != null) {
+      finalResults.add(destResult);
+    }
+
+    // Limpar nulos caso algo tenha falhado (paranoid check)
+    finalResults.removeIf(java.util.Objects::isNull);
+
+    log.info("Resultado mapeados: {}", finalResults.stream().map(r -> r == null ? "null" : r.getSeq()).toList());
+
+    resultado.setWaypoints(finalResults);
     return resultado;
   }
 

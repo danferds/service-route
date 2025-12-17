@@ -57,7 +57,7 @@ public class GoogleRouteResponseDTO {
     /**
      * Polyline da perna
      */
-    private Polyline polyline;
+    // private Polyline polyline;
 
     /**
      * Localização inicial da perna
