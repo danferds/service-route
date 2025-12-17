@@ -4,7 +4,5 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RetryConfig {
-  // Futuro:
-  // @Bean Retry googleRoutesRetry()
-  // @Bean CircuitBreaker googleRoutesCircuitBreaker()
+  // Configuração declarativa via application.properties
 }
