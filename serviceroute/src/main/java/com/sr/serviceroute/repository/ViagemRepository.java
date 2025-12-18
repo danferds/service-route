@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface ViagemRepository extends JpaRepository<Viagem, UUID> {
   List<Viagem> findByRotaId(UUID rotaId);
+
+  List<Viagem> findByDataInicioIsNotNullAndDataFimIsNull();
 }
