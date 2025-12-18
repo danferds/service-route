@@ -110,3 +110,22 @@ CREATE INDEX idx_rota_id_cliente ON rota(id_cliente);
 CREATE INDEX idx_rota_waypoint_rota ON rota_waypoint(id_rota);
 CREATE INDEX idx_visitas_viagem ON visitas(id_viagem);
 CREATE INDEX idx_alertas_tipo ON alertas(tipo);
+
+CREATE TABLE rota_legs (
+    id UUID PRIMARY KEY,
+    id_rota UUID NOT NULL,
+    distance_meters BIGINT,
+    duration_seconds INTEGER,
+    encoded_polyline TEXT,
+    start_lat DOUBLE PRECISION,
+    start_lng DOUBLE PRECISION,
+    end_lat DOUBLE PRECISION,
+    end_lng DOUBLE PRECISION,
+    seq INTEGER NOT NULL,
+
+    CONSTRAINT fk_rota_legs_rota
+        FOREIGN KEY (id_rota)
+        REFERENCES rota(id)
+);
+
+CREATE INDEX idx_rota_legs_rota ON rota_legs(id_rota);

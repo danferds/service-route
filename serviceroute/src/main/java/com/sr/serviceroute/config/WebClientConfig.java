@@ -13,12 +13,11 @@ public class WebClientConfig {
 
   @Bean
   public WebClient googleRoutesWebClient() {
-    // .polyline.encodedPolyline
     return WebClient.builder()
         .baseUrl(config.getBaseUrl())
         .defaultHeader("X-Goog-Api-Key", config.getApiKey())
         .defaultHeader("X-Goog-FieldMask",
-            "routes.duration,routes.distanceMeters,routes,routes.legs.distanceMeters,routes.legs.duration,routes.legs.polyline,routes.legs.startLocation,routes.legs.endLocation,routes.optimizedIntermediateWaypointIndex")
+            "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.distanceMeters,routes.legs.duration,routes.legs.polyline,routes.legs.startLocation,routes.legs.endLocation,routes.optimizedIntermediateWaypointIndex")
         .defaultHeader("Content-Type", "application/json")
         .build();
   }

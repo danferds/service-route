@@ -190,4 +190,51 @@ public class GoogleRoutesMapperImpl implements GoogleRoutesMapper {
   // location.setLng(waypoint.getWaypoint().getLongitude());
   // return location;
   // }
+  @Override
+  public List<com.sr.serviceroute.model.RotaLeg> mapLegs(GoogleRouteResponseDTO response, Rota rota) {
+    if (response == null || response.getRoutes() == null || response.getRoutes().isEmpty()) {
+      return new ArrayList<>();
+    }
+
+    GoogleRouteResponseDTO.Route route = response.getRoutes().get(0);
+    List<GoogleRouteResponseDTO.Leg> legs = route.getLegs();
+
+    if (legs == null || legs.isEmpty()) {
+      return new ArrayList<>();
+    }
+
+    List<com.sr.serviceroute.model.RotaLeg> rotaLegs = new ArrayList<>();
+    for (int i = 0; i < legs.size(); i++) {
+      GoogleRouteResponseDTO.Leg leg = legs.get(i);
+      com.sr.serviceroute.model.RotaLeg rotaLeg = new com.sr.serviceroute.model.RotaLeg();
+
+      rotaLeg.setRota(rota);
+      rotaLeg.setDistanceMeters(leg.getDistanceMeters());
+      try {
+        rotaLeg.setDurationSeconds((int) convertDurationStringToLong(leg.getDuration()));
+      } catch (NumberFormatException e) {
+        log.warn("Falha ao converter duração para leg {}: {}", i, leg.getDuration());
+        rotaLeg.setDurationSeconds(0);
+      }
+
+      if (leg.getPolyline() != null) {
+        rotaLeg.setEncodedPolyline(leg.getPolyline().getEncodedPolyline());
+      }
+
+      if (leg.getStartLocation() != null && leg.getStartLocation().getLatLng() != null) {
+        rotaLeg.setStartLat(leg.getStartLocation().getLatLng().getLatitude());
+        rotaLeg.setStartLng(leg.getStartLocation().getLatLng().getLongitude());
+      }
+
+      if (leg.getEndLocation() != null && leg.getEndLocation().getLatLng() != null) {
+        rotaLeg.setEndLat(leg.getEndLocation().getLatLng().getLatitude());
+        rotaLeg.setEndLng(leg.getEndLocation().getLatLng().getLongitude());
+      }
+
+      rotaLeg.setSeq(i);
+      rotaLegs.add(rotaLeg);
+    }
+
+    return rotaLegs;
+  }
 }

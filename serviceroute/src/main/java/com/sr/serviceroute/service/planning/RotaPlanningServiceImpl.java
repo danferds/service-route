@@ -93,7 +93,15 @@ public class RotaPlanningServiceImpl implements RotaPlanningService {
         }
       }
 
-      // // 7. Atualizar rota
+      // 7. Salvar legs
+      var newLegs = googleRoutesMapper.mapLegs(googleResponse, rota);
+      if (rota.getLegs() == null) {
+        rota.setLegs(new java.util.ArrayList<>());
+      }
+      rota.getLegs().clear();
+      rota.getLegs().addAll(newLegs);
+
+      // // 8. Atualizar rota
       var duracao = resultadoPlanejamento.getTempoTotal();
       rota.setTempoEstimadoTotal(
           duracao == null ? null : Math.toIntExact(duracao.getSeconds()));

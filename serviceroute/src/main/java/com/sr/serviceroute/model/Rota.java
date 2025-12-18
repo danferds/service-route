@@ -44,6 +44,9 @@ public class Rota {
   @Column(name = "tempo_estimado_total")
   private Integer tempoEstimadoTotal;
 
+  @OneToMany(mappedBy = "rota", cascade = CascadeType.ALL, orphanRemoval = true)
+  private java.util.List<RotaLeg> legs;
+
   @PrePersist
   public void prePersist() {
     this.dataCriacao = Instant.now();

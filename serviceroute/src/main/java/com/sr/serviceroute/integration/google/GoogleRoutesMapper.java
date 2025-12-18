@@ -10,10 +10,12 @@ import java.util.List;
 
 public interface GoogleRoutesMapper {
 
-  GoogleRouteRequestDTO toGoogleRequest(
-      Rota rota,
-      List<RotaWaypoint> waypoints);
+    GoogleRouteRequestDTO toGoogleRequest(
+            Rota rota,
+            List<RotaWaypoint> waypoints);
 
-  ResultadoPlanejamento fromGoogleResponse(
-      GoogleRouteResponseDTO response);
+    ResultadoPlanejamento fromGoogleResponse(
+            GoogleRouteResponseDTO response);
+
+    java.util.List<com.sr.serviceroute.model.RotaLeg> mapLegs(GoogleRouteResponseDTO response, Rota rota);
 }
