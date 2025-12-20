@@ -2,6 +2,7 @@ package com.sr.serviceroute.controller;
 
 import com.sr.serviceroute.dto.CriarRotaDTO;
 import com.sr.serviceroute.dto.CriarRotaResponseDTO;
+import com.sr.serviceroute.dto.RotaDetalhadaDTO;
 import com.sr.serviceroute.service.RotaService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -40,5 +41,11 @@ public class RotaController {
   public ResponseEntity<Void> planejar(@PathVariable UUID id) {
     rotaService.planejarRota(id);
     return ResponseEntity.accepted().build();
+  }
+
+  @GetMapping("/{id}")
+  public ResponseEntity<RotaDetalhadaDTO> obterDetalhes(@PathVariable UUID id) {
+    var detalhe = rotaService.obterDetalhesRota(id);
+    return ResponseEntity.ok(detalhe);
   }
 }

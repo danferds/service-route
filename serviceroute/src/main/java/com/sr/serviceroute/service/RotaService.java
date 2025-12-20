@@ -9,6 +9,11 @@ import com.sr.serviceroute.model.enums.RotaWaypointTipo;
 import com.sr.serviceroute.repository.ClienteRepository;
 import com.sr.serviceroute.repository.RotaRepository;
 import com.sr.serviceroute.service.planning.RotaPlanningService;
+import com.sr.serviceroute.dto.RotaDetalhadaDTO;
+import com.sr.serviceroute.dto.RotaWaypointDetalheDTO;
+import com.sr.serviceroute.dto.RotaLegDTO;
+import com.sr.serviceroute.dto.WaypointDetalheDTO;
+import com.sr.serviceroute.model.RotaWaypoint;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -107,5 +112,63 @@ public class RotaService {
       // futuramente: persistir mensagem de erro
       throw ex;
     }
+  }
+
+  public RotaDetalhadaDTO obterDetalhesRota(UUID rotaId) {
+    Rota rota = rotaRepository.findById(rotaId)
+        .orElseThrow(() -> new EntityNotFoundException("Rota não encontrada"));
+
+    List<RotaWaypoint> waypoints = rotaWaypointService.listarPorRota(rotaId);
+
+    RotaWaypointDetalheDTO origem = null;
+    RotaWaypointDetalheDTO destino = null;
+    List<RotaWaypointDetalheDTO> paradas = new java.util.ArrayList<>();
+
+    for (RotaWaypoint rw : waypoints) {
+      RotaWaypointDetalheDTO dto = new RotaWaypointDetalheDTO(
+          rw.getId(),
+          rw.getTipo(),
+          rw.getSeq(),
+          rw.getEtaPrevisto(),
+          new WaypointDetalheDTO(
+              rw.getWaypoint().getId(),
+              rw.getWaypoint().getLatitude(),
+              rw.getWaypoint().getLongitude(),
+              rw.getWaypoint().getEndereco()));
+
+      if (rw.getTipo() == RotaWaypointTipo.ORIGEM) {
+        origem = dto;
+      } else if (rw.getTipo() == RotaWaypointTipo.DESTINO) {
+        destino = dto;
+      } else {
+        paradas.add(dto);
+      }
+    }
+
+    List<RotaLegDTO> legs = new java.util.ArrayList<>();
+    if (rota.getLegs() != null) {
+      legs = rota.getLegs().stream().map(leg -> new RotaLegDTO(
+          leg.getId(),
+          leg.getDistanceMeters(),
+          leg.getDurationSeconds(),
+          leg.getSeq(),
+          leg.getStartLat(),
+          leg.getStartLng(),
+          leg.getEndLat(),
+          leg.getEndLng(),
+          leg.getEncodedPolyline())).toList();
+    }
+
+    return new RotaDetalhadaDTO(
+        rota.getId(),
+        rota.getNome(),
+        rota.getStatus(),
+        rota.getTempoEstimadoTotal(),
+        rota.getDataCriacao(),
+        rota.getCliente().getId(),
+        origem,
+        destino,
+        paradas,
+        legs);
   }
 }

@@ -29,4 +29,8 @@ public class RotaWaypointService {
 
     rotaWaypointRepository.save(rw);
   }
+
+  public java.util.List<RotaWaypoint> listarPorRota(java.util.UUID rotaId) {
+    return rotaWaypointRepository.findByRotaIdOrderBySeqAsc(rotaId);
+  }
 }
