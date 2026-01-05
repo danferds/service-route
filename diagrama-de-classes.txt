@@ -1,0 +1,215 @@
+@startuml
+
+package "com.sr.serviceroute.controller" {
+    class RotaController {
+        - RotaService rotaService
+    }
+    class ViagemController {
+        - ViagemService viagemService
+    }
+    class VisitasController {
+        - VisitasService visitasService
+    }
+    class RelatorioController {
+        - RelatorioService relatorioService
+    }
+}
+
+package "com.sr.serviceroute.service" {
+    class RotaService {
+        - RotaRepository rotaRepository
+        - ClienteRepository clienteRepository
+        - WaypointService waypointService
+        - RotaWaypointService rotaWaypointService
+        - RotaPlanningService rotaPlanningService
+        + criarRota(CriarRotaDTO) : UUID
+        + planejarRota(UUID) : void
+        + obterDetalhesRota(UUID) : RotaDetalhadaDTO
+    }
+
+    class ViagemService {
+        - ViagemRepository viagemRepository
+        - RotaRepository rotaRepository
+        - RotaWaypointRepository rotaWaypointRepository
+        + criar(CriarViagemDTO) : ViagemResponseDTO
+        + iniciar(UUID, IniciarViagemDTO) : ViagemResponseDTO
+        + finalizar(UUID, FinalizarViagemDTO) : ViagemResponseDTO
+    }
+
+    class VisitasService {
+        - VisitasRepository visitasRepository
+        - ViagemRepository viagemRepository
+        - RotaWaypointRepository rotaWaypointRepository
+        + registrar(UUID, RegistrarVisitaDTO) : VisitaResponseDTO
+        + listarPorViagem(UUID) : List<VisitaResponseDTO>
+    }
+
+    class AlertaService {
+        - AlertasRepository alertasRepository
+        + registrarAtraso(Visitas, Duration) : void
+    }
+
+    class RelatorioService {
+        - ViagemRepository viagemRepository
+        - VisitasRepository visitasRepository
+        - RotaWaypointRepository rotaWaypointRepository
+        + gerarRelatorioViagensEmAndamento() : List<RelatorioViagemDTO>
+    }
+
+    class VisitasMonitorService {
+        - VisitasRepository visitasRepository
+        - AlertaService alertaService
+        + processarAtrasosPendentes() : void
+    }
+    
+    interface RotaPlanningService {
+        + planejar(UUID) : void
+    }
+
+    class WaypointService {
+        + criar(WaypointDTO) : Waypoint
+    }
+
+    class RotaWaypointService {
+        + vincular(Rota, Waypoint, RotaWaypointTipo, Integer) : void
+    }
+}
+
+package "com.sr.serviceroute.repository" {
+    interface RotaRepository
+    interface ClienteRepository
+    interface ViagemRepository
+    interface VisitasRepository
+    interface AlertasRepository
+    interface RotaWaypointRepository
+    interface WaypointRepository
+}
+
+package "com.sr.serviceroute.model" {
+    class Cliente {
+        - UUID id
+        - String nome
+    }
+
+    class Rota {
+        - UUID id
+        - String nome
+        - Instant dataCriacao
+        - RotaStatus status
+        - Integer tempoEstimadoTotal
+    }
+
+    class RotaLeg {
+        - UUID id
+        - Long distanceMeters
+        - Integer durationSeconds
+        - String encodedPolyline
+        - Integer seq
+    }
+
+    class RotaWaypoint {
+        - UUID id
+        - RotaWaypointTipo tipo
+        - Integer seq
+        - Instant etaPrevisto
+    }
+
+    class Waypoint {
+        - UUID id
+        - Double latitude
+        - Double longitude
+        - String endereco
+    }
+
+    class Viagem {
+        - UUID id
+        - String veiculoRef
+        - Integer tempoRealTotal
+        - Instant dataInicio
+        - Instant dataFim
+    }
+
+    class Visitas {
+        - UUID id
+        - Instant etaReal
+        - Instant dataCriacao
+    }
+
+    class Alertas {
+        - UUID id
+        - String texto
+        - AlertaTipo tipo
+        - Instant dataCriacao
+    }
+
+    enum RotaStatus {
+        CRIADA
+        PLANEJANDO
+        PLANEJADA
+        ERRO
+    }
+
+    enum RotaWaypointTipo {
+        ORIGEM
+        DESTINO
+        PARADA
+    }
+
+    enum AlertaTipo {
+        ATRASO
+    }
+}
+
+package "com.sr.serviceroute.integration.google" {
+    interface GoogleRoutesClient {
+        + calcularRota(GoogleRouteRequestDTO) : GoogleRouteResponseDTO
+    }
+    
+    class GoogleRoutesClientImpl {
+        - GoogleRoutesMapper mapper
+    }
+    
+    class GoogleRoutesMapper
+}
+
+RotaController --> RotaService
+ViagemController --> ViagemService
+VisitasController --> VisitasService
+RelatorioController --> RelatorioService
+
+RotaService --> RotaRepository
+RotaService --> ClienteRepository
+ViagemService --> ViagemRepository
+ViagemService --> RotaRepository
+ViagemService --> RotaWaypointRepository
+VisitasService --> VisitasRepository
+VisitasService --> ViagemRepository
+VisitasService --> RotaWaypointRepository
+AlertaService --> AlertasRepository
+RelatorioService --> ViagemRepository
+RelatorioService --> VisitasRepository
+RelatorioService --> RotaWaypointRepository
+VisitasMonitorService --> VisitasRepository
+
+RotaService --> WaypointService
+RotaService --> RotaWaypointService
+RotaService --> RotaPlanningService
+VisitasMonitorService --> AlertaService
+
+RotaPlanningService ..> GoogleRoutesClient : uses
+GoogleRoutesClientImpl ..|> GoogleRoutesClient
+
+Rota "1" *-- "0..*" RotaLeg : contains
+Rota "1" *-- "0..*" RotaWaypoint : contains
+RotaWaypoint "0..*" -- "1" Waypoint : references
+Rota "0..*" -- "1" Cliente : belongs to
+Viagem "0..*" -- "1" Rota : based on
+Visitas "0..*" -- "1" Viagem : during
+Visitas "0..*" -- "1" RotaWaypoint : at
+Alertas "0..*" -- "1" Visitas : related to
+
+Rota .. RotaStatus
+RotaWaypoint .. RotaWaypointTipo
+Alertas .. AlertaTipo
+
+@enduml
